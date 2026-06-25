@@ -17,17 +17,14 @@ chrono/
 └── docker-compose.yml
 ```
 
-## Ramas de desarrollo
+## Desarrollo
 
-| Rama | Funcionalidad | Estado |
-|------|---------------|--------|
-| `main` | MVP completo mergeado | ✅ |
-| `feature/local-dev` | Desarrollo local sin Docker + Expo | En progreso |
-| `feature/api-auth` | Mejoras auth JWT + Google OAuth | Pendiente |
-| `feature/api-reminders` | Mejoras CRUD recordatorios | Pendiente |
-| `feature/api-google-calendar` | Sync Google Calendar | Pendiente |
-| `feature/worker` | Worker BullMQ | Pendiente |
-| `feature/mobile` | App Expo | Pendiente |
+Todo el desarrollo activo se hace en la rama **`main`** (rama por defecto del repositorio).
+
+```bash
+git checkout main
+git pull origin main
+```
 
 ## Requisitos
 
