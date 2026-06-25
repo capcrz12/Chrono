@@ -12,6 +12,7 @@ import { useAuth } from '../context/AuthContext';
 import { Input } from '../components/Input';
 import { Button } from '../components/Button';
 import { colors, spacing, typography } from '../theme';
+import { openGoogleAuth } from '../services/googleAuth';
 
 export function LoginScreen() {
   const { login, register } = useAuth();
@@ -38,11 +39,16 @@ export function LoginScreen() {
     }
   };
 
-  const handleGoogleLogin = () => {
-    Alert.alert(
-      'Google OAuth',
-      'La estructura OAuth está preparada en el backend. Configura GOOGLE_CLIENT_ID en .env para habilitarlo.',
-    );
+  const handleGoogleLogin = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      await openGoogleAuth();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error con Google');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

@@ -38,7 +38,8 @@ const reminderWorker = new Worker<ReminderJobData>(
           reminderId: data.reminderId,
           title: data.title,
           message: `Recordatorio: ${data.title}`,
-        },
+          channel: 'both',
+        } satisfies SendNotificationJobData,
         { removeOnComplete: true },
       );
 

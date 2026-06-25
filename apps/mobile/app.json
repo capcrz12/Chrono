@@ -14,19 +14,37 @@
     "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.chrono.app"
+      "bundleIdentifier": "com.chrono.app",
+      "infoPlist": {
+        "UIBackgroundModes": ["remote-notification"]
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#FAFAFA"
       },
-      "package": "com.chrono.app"
+      "package": "com.chrono.app",
+      "permissions": ["RECEIVE_BOOT_COMPLETED", "VIBRATE"]
     },
     "web": {
       "favicon": "./assets/favicon.png",
       "bundler": "metro"
     },
-    "scheme": "chrono"
+    "scheme": "chrono",
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#2D2D2D"
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "chrono-local-dev"
+      }
+    }
   }
 }

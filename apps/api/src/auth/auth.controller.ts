@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get, UseGuards, Req, Res } from '@nestjs/common';
+import { Controller, Post, Body, Get, UseGuards, Req, Res, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { Request, Response } from 'express';
@@ -40,6 +40,14 @@ export class AuthController {
     };
   }
 
+  @Get('google/url')
+  @ApiOperation({ summary: 'URL para iniciar OAuth con Google (mobile/web)' })
+  googleAuthUrl(@Query('platform') platform?: string) {
+    const base = process.env.API_URL ?? 'http://localhost:3000';
+    const state = platform === 'web' ? 'web' : 'mobile';
+    return { url: `${base}/api/auth/google?state=${state}` };
+  }
+
   @Get('google')
   @UseGuards(AuthGuard('google'))
   @ApiOperation({ summary: 'Iniciar OAuth con Google (redirige)' })
@@ -53,7 +61,11 @@ export class AuthController {
   async googleCallback(@Req() req: Request, @Res() res: Response) {
     const user = req.user as User;
     const authResponse = await this.authService.loginWithGoogleUser(user);
-    const redirectUrl = process.env.MOBILE_DEEP_LINK ?? 'http://localhost:8081';
+    const state = (req.query.state as string) ?? 'mobile';
+    const redirectUrl =
+      state === 'web'
+        ? (process.env.WEB_APP_URL ?? 'http://localhost:8081')
+        : (process.env.MOBILE_DEEP_LINK ?? 'chrono://auth');
     res.redirect(`${redirectUrl}?token=${authResponse.accessToken}`);
   }
 }

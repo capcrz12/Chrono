@@ -1,6 +1,6 @@
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
-import { AuthResponse } from '@chrono/shared';
+import { CustomRecurrence } from '@chrono/shared';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000/api';
 const TOKEN_KEY = 'chrono_token';
@@ -133,6 +133,29 @@ class ApiClient {
     });
   }
 
+  getGoogleAuthUrl(platform: 'web' | 'mobile' = 'mobile') {
+    return this.request<{ url: string }>(
+      `/auth/google/url?platform=${platform}`,
+    );
+  }
+
+  registerPushToken(token: string) {
+    return this.request<{ message: string }>('/users/push-token', {
+      method: 'POST',
+      body: JSON.stringify({ token }),
+    });
+  }
+
+  updateNotificationPrefs(emailNotificationsEnabled: boolean) {
+    return this.request<{ emailNotificationsEnabled: boolean }>(
+      '/users/notification-preferences',
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ emailNotificationsEnabled }),
+      },
+    );
+  }
+
   googleCalendarStatus() {
     return this.request<{ connected: boolean; message: string }>(
       '/google-calendar/status',
@@ -146,7 +169,9 @@ export interface ReminderResponse {
   title: string;
   description: string | null;
   datetime: string;
+  durationMinutes: number | null;
   recurrence: string;
+  customRecurrence: CustomRecurrence | null;
   isCompleted: boolean;
   googleEventId: string | null;
   createdAt: string;
@@ -157,7 +182,9 @@ export interface CreateReminderPayload {
   title: string;
   description?: string;
   datetime: string;
+  durationMinutes?: number | null;
   recurrence?: string;
+  customRecurrence?: CustomRecurrence | null;
   isCompleted?: boolean;
 }
 

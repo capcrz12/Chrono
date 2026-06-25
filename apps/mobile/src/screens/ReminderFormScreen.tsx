@@ -6,47 +6,35 @@ import {
   ScrollView,
   Alert,
   Platform,
+  TouchableOpacity,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RecurrenceType } from '@chrono/shared';
+import { CustomRecurrence, RecurrenceType } from '@chrono/shared';
 import { api } from '../services/api';
 import { Input } from '../components/Input';
 import { Button } from '../components/Button';
+import { DateTimePickerField } from '../components/DateTimePickerField';
+import { DurationPicker } from '../components/DurationPicker';
+import { CustomRecurrencePicker } from '../components/CustomRecurrencePicker';
 import { colors, spacing, typography } from '../theme';
 import { RootStackParamList } from '../navigation/types';
+import { parseInitialDate } from '../utils/reminderFormat';
 
 type ScreenRoute = RouteProp<RootStackParamList, 'ReminderForm'>;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 const RECURRENCE_OPTIONS = [
-  { value: RecurrenceType.NONE, label: 'Sin repetición' },
-  { value: RecurrenceType.DAILY, label: 'Diario' },
-  { value: RecurrenceType.WEEKLY, label: 'Semanal' },
-  { value: RecurrenceType.CUSTOM, label: 'Personalizado' },
+  { value: RecurrenceType.NONE, label: 'No' },
+  { value: RecurrenceType.DAILY, label: 'Día' },
+  { value: RecurrenceType.WEEKLY, label: 'Sem' },
+  { value: RecurrenceType.CUSTOM, label: 'Custom' },
 ];
 
-function defaultDatetimeLocal(): string {
-  const d = new Date(Date.now() + 3600000);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
-function toDatetimeLocal(iso: string): string {
-  const d = new Date(iso);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
-function toIsoDatetime(value: string): string {
-  if (!value.trim()) {
-    return new Date(Date.now() + 3600000).toISOString();
-  }
-  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)) {
-    return new Date(value).toISOString();
-  }
-  return new Date(value).toISOString();
-}
+const DEFAULT_CUSTOM: CustomRecurrence = {
+  interval: 1,
+  unit: 'weeks',
+};
 
 export function ReminderFormScreen() {
   const navigation = useNavigation<NavigationProp>();
@@ -56,8 +44,13 @@ export function ReminderFormScreen() {
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [datetime, setDatetime] = useState(defaultDatetimeLocal);
+  const [datetime, setDatetime] = useState(() =>
+    parseInitialDate(route.params?.initialDate),
+  );
+  const [durationMinutes, setDurationMinutes] = useState<number | null>(null);
   const [recurrence, setRecurrence] = useState<RecurrenceType>(RecurrenceType.NONE);
+  const [customRecurrence, setCustomRecurrence] =
+    useState<CustomRecurrence>(DEFAULT_CUSTOM);
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(isEditing);
 
@@ -69,12 +62,16 @@ export function ReminderFormScreen() {
         const reminder = await api.getReminder(reminderId);
         setTitle(reminder.title);
         setDescription(reminder.description ?? '');
-        setDatetime(toDatetimeLocal(reminder.datetime));
+        setDatetime(new Date(reminder.datetime));
+        setDurationMinutes(reminder.durationMinutes);
         setRecurrence(reminder.recurrence as RecurrenceType);
+        if (reminder.customRecurrence) {
+          setCustomRecurrence(reminder.customRecurrence);
+        }
       } catch (err) {
         Alert.alert(
           'Error',
-          err instanceof Error ? err.message : 'No se pudo cargar el recordatorio',
+          err instanceof Error ? err.message : 'No se pudo cargar',
         );
         navigation.goBack();
       } finally {
@@ -91,13 +88,21 @@ export function ReminderFormScreen() {
       return;
     }
 
+    if (recurrence === RecurrenceType.CUSTOM && !customRecurrence) {
+      Alert.alert('Error', 'Configura la recurrencia personalizada');
+      return;
+    }
+
     setLoading(true);
     try {
       const payload = {
         title: title.trim(),
         description: description.trim() || undefined,
-        datetime: toIsoDatetime(datetime),
+        datetime: datetime.toISOString(),
+        durationMinutes,
         recurrence,
+        customRecurrence:
+          recurrence === RecurrenceType.CUSTOM ? customRecurrence : null,
       };
 
       if (isEditing && reminderId) {
@@ -118,32 +123,24 @@ export function ReminderFormScreen() {
 
   const handleDelete = () => {
     if (!reminderId) return;
-
-    Alert.alert(
-      'Eliminar recordatorio',
-      '¿Estás seguro? Esta acción no se puede deshacer.',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Eliminar',
-          style: 'destructive',
-          onPress: async () => {
-            setLoading(true);
-            try {
-              await api.deleteReminder(reminderId);
-              navigation.goBack();
-            } catch (err) {
-              Alert.alert(
-                'Error',
-                err instanceof Error ? err.message : 'No se pudo eliminar',
-              );
-            } finally {
-              setLoading(false);
-            }
-          },
+    Alert.alert('Eliminar', '¿Eliminar este recordatorio?', [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Eliminar',
+        style: 'destructive',
+        onPress: async () => {
+          setLoading(true);
+          try {
+            await api.deleteReminder(reminderId);
+            navigation.goBack();
+          } catch (err) {
+            Alert.alert('Error', err instanceof Error ? err.message : 'Error');
+          } finally {
+            setLoading(false);
+          }
         },
-      ],
-    );
+      },
+    ]);
   };
 
   if (loadingData) {
@@ -157,7 +154,7 @@ export function ReminderFormScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.title}>
-        {isEditing ? 'Editar recordatorio' : 'Nuevo recordatorio'}
+        {isEditing ? 'Editar' : 'Nuevo recordatorio'}
       </Text>
 
       <Input
@@ -169,37 +166,54 @@ export function ReminderFormScreen() {
 
       <Input
         label="Descripción"
-        placeholder="Detalles adicionales (opcional)"
+        placeholder="Opcional"
         value={description}
         onChangeText={setDescription}
         multiline
         numberOfLines={3}
-        style={{ minHeight: 80, textAlignVertical: 'top' }}
+        style={{ minHeight: 72, textAlignVertical: 'top' }}
       />
 
-      <Input
-        label="Fecha y hora"
-        placeholder="2026-06-25T10:00"
+      <DateTimePickerField
+        label="Cuándo"
         value={datetime}
-        onChangeText={setDatetime}
+        onChange={setDatetime}
       />
-      <Text style={styles.hint}>Formato: AAAA-MM-DDTHH:MM</Text>
 
-      <Text style={styles.label}>Recurrencia</Text>
+      <DurationPicker value={durationMinutes} onChange={setDurationMinutes} />
+
+      <Text style={styles.label}>Repetir</Text>
       <View style={styles.recurrenceRow}>
         {RECURRENCE_OPTIONS.map((option) => (
-          <Button
+          <TouchableOpacity
             key={option.value}
-            title={option.label}
-            variant={recurrence === option.value ? 'primary' : 'secondary'}
+            style={[
+              styles.recurrenceChip,
+              recurrence === option.value && styles.recurrenceChipActive,
+            ]}
             onPress={() => setRecurrence(option.value)}
-            style={styles.recurrenceButton}
-          />
+          >
+            <Text
+              style={[
+                styles.recurrenceText,
+                recurrence === option.value && styles.recurrenceTextActive,
+              ]}
+            >
+              {option.label}
+            </Text>
+          </TouchableOpacity>
         ))}
       </View>
 
+      {recurrence === RecurrenceType.CUSTOM && (
+        <CustomRecurrencePicker
+          value={customRecurrence}
+          onChange={setCustomRecurrence}
+        />
+      )}
+
       <Button
-        title={isEditing ? 'Guardar cambios' : 'Crear recordatorio'}
+        title={isEditing ? 'Guardar' : 'Crear'}
         onPress={handleSave}
         loading={loading}
         style={styles.submit}
@@ -207,43 +221,29 @@ export function ReminderFormScreen() {
 
       {isEditing && (
         <Button
-          title="Eliminar recordatorio"
+          title="Eliminar"
           variant="danger"
           onPress={handleDelete}
           disabled={loading}
-          style={styles.delete}
         />
       )}
-
-      <Button
-        title="Cancelar"
-        variant="ghost"
-        onPress={() => navigation.goBack()}
-      />
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  content: {
-    padding: spacing.lg,
-    paddingBottom: spacing.xl,
-  },
+  container: { flex: 1, backgroundColor: colors.background },
+  content: { padding: spacing.lg, paddingBottom: spacing.xl },
   loading: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.background,
   },
-  loadingText: {
-    color: colors.textSecondary,
-  },
+  loadingText: { color: colors.textSecondary },
   title: {
     ...typography.title,
+    fontSize: 24,
     marginBottom: spacing.lg,
     marginTop: Platform.OS === 'ios' ? spacing.md : 0,
   },
@@ -253,28 +253,28 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginBottom: spacing.sm,
   },
-  hint: {
-    fontSize: 12,
-    color: colors.textMuted,
-    marginTop: -spacing.sm,
-    marginBottom: spacing.md,
-  },
   recurrenceRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-    marginBottom: spacing.lg,
+    gap: 8,
+    marginBottom: spacing.md,
   },
-  recurrenceButton: {
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    minHeight: 40,
+  recurrenceChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 16,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  submit: {
-    marginTop: spacing.md,
-    marginBottom: spacing.sm,
+  recurrenceChipActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
-  delete: {
-    marginBottom: spacing.sm,
+  recurrenceText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.textSecondary,
   },
+  recurrenceTextActive: { color: '#FFF' },
+  submit: { marginTop: spacing.md, marginBottom: spacing.sm },
 });

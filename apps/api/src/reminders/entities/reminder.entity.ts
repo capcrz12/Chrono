@@ -7,7 +7,7 @@ import {
   ManyToOne,
   JoinColumn,
 } from 'typeorm';
-import { RecurrenceType } from '@chrono/shared';
+import { RecurrenceType, CustomRecurrence } from '@chrono/shared';
 import { User } from '../../users/entities/user.entity';
 
 @Entity('reminders')
@@ -31,12 +31,18 @@ export class Reminder {
   @Column({ type: 'timestamptz' })
   datetime!: Date;
 
+  @Column({ type: 'int', nullable: true })
+  durationMinutes!: number | null;
+
   @Column({
     type: 'enum',
     enum: RecurrenceType,
     default: RecurrenceType.NONE,
   })
   recurrence!: RecurrenceType;
+
+  @Column({ type: 'jsonb', nullable: true })
+  customRecurrence!: CustomRecurrence | null;
 
   @Column({ type: 'boolean', default: false })
   isCompleted!: boolean;

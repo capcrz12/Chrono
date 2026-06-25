@@ -8,6 +8,10 @@ import React, {
 } from 'react';
 import { api } from '../services/api';
 import { AuthResponse } from '@chrono/shared';
+import {
+  registerForPushNotifications,
+  setupNotificationChannel,
+} from '../services/notifications';
 
 interface User {
   id: string;
@@ -30,10 +34,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  const afterAuth = useCallback(async () => {
+    setupNotificationChannel();
+    await registerForPushNotifications();
+  }, []);
+
   const handleAuthResponse = useCallback(async (response: AuthResponse) => {
     await api.setToken(response.accessToken);
     setUser(response.user);
-  }, []);
+    await afterAuth();
+  }, [afterAuth]);
 
   useEffect(() => {
     async function bootstrap() {
@@ -43,6 +53,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
           const me = await api.me();
           setUser(me);
+          setupNotificationChannel();
+          await registerForPushNotifications();
         } catch {
           await api.setToken(null);
         }
@@ -71,6 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await api.setToken(token);
     const me = await api.me();
     setUser(me);
+    await afterAuth();
   };
 
   return (

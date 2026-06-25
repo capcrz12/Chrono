@@ -1,7 +1,7 @@
 export type RootStackParamList = {
   Login: undefined;
   Main: undefined;
-  ReminderForm: { reminderId?: string };
+  ReminderForm: { reminderId?: string; initialDate?: string };
 };
 
 export type MainTabParamList = {

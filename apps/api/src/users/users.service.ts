@@ -34,7 +34,9 @@ export class UsersService {
 
   async update(
     id: string,
-    data: Partial<Pick<User, 'name' | 'googleId' | 'passwordHash'>>,
+    data: Partial<
+      Pick<User, 'name' | 'googleId' | 'passwordHash' | 'expoPushToken' | 'emailNotificationsEnabled'>
+    >,
   ): Promise<User> {
     const user = await this.findById(id);
     if (!user) {

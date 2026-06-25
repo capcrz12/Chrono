@@ -26,6 +26,12 @@ export class User {
   @Column({ type: 'varchar', nullable: true, unique: true })
   googleId!: string | null;
 
+  @Column({ type: 'varchar', nullable: true })
+  expoPushToken!: string | null;
+
+  @Column({ type: 'boolean', default: true })
+  emailNotificationsEnabled!: boolean;
+
   @OneToMany(() => Reminder, (reminder) => reminder.user)
   reminders!: Reminder[];
 

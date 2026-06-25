@@ -34,7 +34,12 @@ export class RemindersService {
       title: dto.title,
       description: dto.description ?? null,
       datetime: new Date(dto.datetime),
+      durationMinutes: dto.durationMinutes ?? null,
       recurrence: dto.recurrence ?? RecurrenceType.NONE,
+      customRecurrence:
+        dto.recurrence === RecurrenceType.CUSTOM
+          ? (dto.customRecurrence ?? null)
+          : null,
       isCompleted: dto.isCompleted ?? false,
     });
 
@@ -91,7 +96,18 @@ export class RemindersService {
     if (dto.title !== undefined) reminder.title = dto.title;
     if (dto.description !== undefined) reminder.description = dto.description ?? null;
     if (dto.datetime !== undefined) reminder.datetime = new Date(dto.datetime);
-    if (dto.recurrence !== undefined) reminder.recurrence = dto.recurrence;
+    if (dto.durationMinutes !== undefined) {
+      reminder.durationMinutes = dto.durationMinutes;
+    }
+    if (dto.recurrence !== undefined) {
+      reminder.recurrence = dto.recurrence;
+      reminder.customRecurrence =
+        dto.recurrence === RecurrenceType.CUSTOM
+          ? (dto.customRecurrence ?? reminder.customRecurrence)
+          : null;
+    } else if (dto.customRecurrence !== undefined) {
+      reminder.customRecurrence = dto.customRecurrence;
+    }
     if (dto.isCompleted !== undefined) reminder.isCompleted = dto.isCompleted;
 
     const saved = await this.remindersRepository.save(reminder);
@@ -119,6 +135,7 @@ export class RemindersService {
           title: reminder.title,
           datetime: reminder.datetime.toISOString(),
           recurrence: reminder.recurrence,
+          customRecurrence: reminder.customRecurrence,
         },
         {
           delay,

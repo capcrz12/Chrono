@@ -1,11 +1,5 @@
 import React from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-} from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { colors, spacing } from '../theme';
 
 export type FilterValue = 'all' | 'pending' | 'completed';
@@ -19,21 +13,15 @@ interface FilterChipsProps {
 const OPTIONS: { value: FilterValue; label: string }[] = [
   { value: 'all', label: 'Todos' },
   { value: 'pending', label: 'Pendientes' },
-  { value: 'completed', label: 'Completados' },
+  { value: 'completed', label: 'Hechos' },
 ];
 
 export function FilterChips({ value, onChange, counts }: FilterChipsProps) {
   return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={styles.row}
-    >
+    <View style={styles.row}>
       {OPTIONS.map((option) => {
         const active = value === option.value;
         const count = counts?.[option.value];
-        const label =
-          count !== undefined ? `${option.label} (${count})` : option.label;
 
         return (
           <TouchableOpacity
@@ -43,37 +31,35 @@ export function FilterChips({ value, onChange, counts }: FilterChipsProps) {
             activeOpacity={0.7}
           >
             <Text style={[styles.chipText, active && styles.chipTextActive]}>
-              {label}
+              {option.label}
+              {count !== undefined ? ` · ${count}` : ''}
             </Text>
           </TouchableOpacity>
         );
       })}
-    </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   row: {
+    flexDirection: 'row',
     paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.md,
-    gap: spacing.sm,
+    paddingBottom: spacing.sm,
+    gap: 6,
   },
   chip: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: 20,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 14,
   },
   chipActive: {
     backgroundColor: colors.primary,
-    borderColor: colors.primary,
   },
   chipText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '500',
-    color: colors.textSecondary,
+    color: colors.textMuted,
   },
   chipTextActive: {
     color: '#FFFFFF',

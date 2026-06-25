@@ -1,9 +1,10 @@
-import React from 'react';
-import { ActivityIndicator, View, StyleSheet, Text } from 'react-native';
+import React, { useEffect } from 'react';
+import { ActivityIndicator, View, StyleSheet, Text, Platform } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { StatusBar } from 'expo-status-bar';
+import * as Linking from 'expo-linking';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { LoginScreen } from './screens/LoginScreen';
 import { RemindersListScreen } from './screens/RemindersListScreen';
@@ -44,7 +45,16 @@ function MainTabs() {
         tabBarInactiveTintColor: colors.textMuted,
         tabBarLabelStyle: { fontSize: 12, fontWeight: '500' },
         tabBarIcon: ({ focused }) => (
-          <TabIcon label={route.name === 'Reminders' ? 'Lista' : route.name === 'Calendar' ? 'Calendario' : 'Perfil'} focused={focused} />
+          <TabIcon
+            label={
+              route.name === 'Reminders'
+                ? 'Lista'
+                : route.name === 'Calendar'
+                  ? 'Calendario'
+                  : 'Perfil'
+            }
+            focused={focused}
+          />
         ),
       })}
     >
@@ -67,6 +77,38 @@ function MainTabs() {
   );
 }
 
+function OAuthHandler() {
+  const { setTokenFromOAuth } = useAuth();
+
+  useEffect(() => {
+    const handleUrl = (url: string) => {
+      const parsed = Linking.parse(url);
+      const token = parsed.queryParams?.token;
+      if (typeof token === 'string') {
+        setTokenFromOAuth(token);
+      }
+    };
+
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const token = params.get('token');
+      if (token) {
+        setTokenFromOAuth(token);
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+    }
+
+    Linking.getInitialURL().then((url) => {
+      if (url) handleUrl(url);
+    });
+
+    const sub = Linking.addEventListener('url', ({ url }) => handleUrl(url));
+    return () => sub.remove();
+  }, [setTokenFromOAuth]);
+
+  return null;
+}
+
 function AppNavigator() {
   const { user, isLoading } = useAuth();
 
@@ -79,33 +121,40 @@ function AppNavigator() {
   }
 
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
-      {user ? (
-        <>
-          <Stack.Screen name="Main" component={MainTabs} />
-          <Stack.Screen
-            name="ReminderForm"
-            component={ReminderFormScreen}
-            options={{
-              headerShown: true,
-              headerTitle: '',
-              headerBackTitle: 'Atrás',
-              headerStyle: { backgroundColor: colors.background },
-              headerShadowVisible: false,
-            }}
-          />
-        </>
-      ) : (
-        <Stack.Screen name="Login" component={LoginScreen} />
-      )}
-    </Stack.Navigator>
+    <>
+      <OAuthHandler />
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        {user ? (
+          <>
+            <Stack.Screen name="Main" component={MainTabs} />
+            <Stack.Screen
+              name="ReminderForm"
+              component={ReminderFormScreen}
+              options={{
+                headerShown: true,
+                headerTitle: '',
+                headerBackTitle: 'Atrás',
+                headerStyle: { backgroundColor: colors.background },
+                headerShadowVisible: false,
+              }}
+            />
+          </>
+        ) : (
+          <Stack.Screen name="Login" component={LoginScreen} />
+        )}
+      </Stack.Navigator>
+    </>
   );
 }
 
 export default function App() {
   return (
     <AuthProvider>
-      <NavigationContainer>
+      <NavigationContainer
+        linking={{
+          prefixes: [Linking.createURL('/'), 'chrono://'],
+        }}
+      >
         <StatusBar style="dark" />
         <AppNavigator />
       </NavigationContainer>

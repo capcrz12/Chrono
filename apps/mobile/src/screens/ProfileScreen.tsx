@@ -6,10 +6,13 @@ import {
   ScrollView,
   RefreshControl,
   ActivityIndicator,
+  Switch,
+  Platform,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
+import { openGoogleAuth } from '../services/googleAuth';
 import { Button } from '../components/Button';
 import { colors, spacing, typography } from '../theme';
 
@@ -19,8 +22,10 @@ export function ProfileScreen() {
     connected: boolean;
     message: string;
   } | null>(null);
+  const [emailEnabled, setEmailEnabled] = useState(true);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [connectingGoogle, setConnectingGoogle] = useState(false);
 
   const loadStatus = async () => {
     try {
@@ -43,6 +48,24 @@ export function ProfileScreen() {
     }, []),
   );
 
+  const handleConnectGoogle = async () => {
+    setConnectingGoogle(true);
+    try {
+      await openGoogleAuth();
+    } finally {
+      setConnectingGoogle(false);
+    }
+  };
+
+  const toggleEmail = async (value: boolean) => {
+    setEmailEnabled(value);
+    try {
+      await api.updateNotificationPrefs(value);
+    } catch {
+      setEmailEnabled(!value);
+    }
+  };
+
   return (
     <ScrollView
       style={styles.container}
@@ -62,47 +85,62 @@ export function ProfileScreen() {
       <View style={styles.card}>
         <Text style={styles.cardLabel}>Nombre</Text>
         <Text style={styles.cardValue}>{user?.name}</Text>
-
-        <Text style={[styles.cardLabel, styles.cardLabelSpaced]}>Email</Text>
+        <Text style={[styles.cardLabel, styles.spaced]}>Email</Text>
         <Text style={styles.cardValue}>{user?.email}</Text>
       </View>
 
       <View style={styles.card}>
         <Text style={styles.sectionTitle}>Google Calendar</Text>
         {loading ? (
-          <ActivityIndicator color={colors.primary} style={styles.loader} />
+          <ActivityIndicator color={colors.primary} />
         ) : (
           <>
             <View style={styles.statusRow}>
               <View
                 style={[
-                  styles.statusDot,
+                  styles.dot,
                   calendarStatus?.connected
-                    ? styles.statusConnected
-                    : styles.statusDisconnected,
+                    ? styles.dotOn
+                    : styles.dotOff,
                 ]}
               />
               <Text style={styles.statusText}>
                 {calendarStatus?.connected ? 'Conectado' : 'No conectado'}
               </Text>
             </View>
-            <Text style={styles.statusMessage}>{calendarStatus?.message}</Text>
             {!calendarStatus?.connected && (
-              <Text style={styles.hint}>
-                Configura GOOGLE_CLIENT_ID en el backend y usa "Continuar con
-                Google" en el login para vincular tu calendario.
-              </Text>
+              <Button
+                title="Conectar con Google"
+                onPress={handleConnectGoogle}
+                loading={connectingGoogle}
+                style={styles.googleBtn}
+              />
             )}
           </>
         )}
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.sectionTitle}>Acerca de</Text>
-        <Text style={styles.aboutText}>
-          Chrono v0.1 — Recordatorios inteligentes con sincronización de
-          calendario.
-        </Text>
+        <Text style={styles.sectionTitle}>Notificaciones</Text>
+        <View style={styles.switchRow}>
+          <View style={styles.switchInfo}>
+            <Text style={styles.switchLabel}>Email (web)</Text>
+            <Text style={styles.switchHint}>
+              Recibe recordatorios por correo
+            </Text>
+          </View>
+          <Switch
+            value={emailEnabled}
+            onValueChange={toggleEmail}
+            trackColor={{ true: colors.primary }}
+          />
+        </View>
+        {Platform.OS !== 'web' && (
+          <Text style={styles.pushHint}>
+            Las notificaciones push se activan al iniciar sesión en la app
+            móvil.
+          </Text>
+        )}
       </View>
 
       <Button title="Cerrar sesión" variant="secondary" onPress={logout} />
@@ -111,19 +149,13 @@ export function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
+  container: { flex: 1, backgroundColor: colors.background },
   content: {
     padding: spacing.lg,
     paddingTop: spacing.xl,
     paddingBottom: spacing.xl,
   },
-  title: {
-    ...typography.title,
-    marginBottom: spacing.lg,
-  },
+  title: { ...typography.title, marginBottom: spacing.lg },
   card: {
     backgroundColor: colors.surface,
     borderRadius: 12,
@@ -132,64 +164,33 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  cardLabel: {
-    fontSize: 13,
-    color: colors.textMuted,
-    fontWeight: '500',
-  },
-  cardLabelSpaced: {
-    marginTop: spacing.md,
-  },
+  cardLabel: { fontSize: 13, color: colors.textMuted, fontWeight: '500' },
+  spaced: { marginTop: spacing.md },
   cardValue: {
     fontSize: 16,
     color: colors.text,
     marginTop: 4,
     fontWeight: '500',
   },
-  sectionTitle: {
-    ...typography.heading,
-    fontSize: 17,
-    marginBottom: spacing.md,
-  },
-  statusRow: {
+  sectionTitle: { ...typography.heading, fontSize: 17, marginBottom: spacing.md },
+  statusRow: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm },
+  dot: { width: 10, height: 10, borderRadius: 5, marginRight: spacing.sm },
+  dotOn: { backgroundColor: colors.success },
+  dotOff: { backgroundColor: colors.textMuted },
+  statusText: { fontSize: 15, fontWeight: '600', color: colors.text },
+  googleBtn: { marginTop: spacing.sm },
+  switchRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: spacing.sm,
+    justifyContent: 'space-between',
   },
-  statusDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    marginRight: spacing.sm,
-  },
-  statusConnected: {
-    backgroundColor: colors.success,
-  },
-  statusDisconnected: {
-    backgroundColor: colors.textMuted,
-  },
-  statusText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  statusMessage: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    lineHeight: 20,
-  },
-  hint: {
+  switchInfo: { flex: 1, marginRight: spacing.md },
+  switchLabel: { fontSize: 15, fontWeight: '600', color: colors.text },
+  switchHint: { fontSize: 13, color: colors.textMuted, marginTop: 2 },
+  pushHint: {
     fontSize: 13,
     color: colors.textMuted,
     marginTop: spacing.md,
     lineHeight: 18,
-  },
-  aboutText: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    lineHeight: 20,
-  },
-  loader: {
-    marginVertical: spacing.md,
   },
 });

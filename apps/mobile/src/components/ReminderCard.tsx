@@ -14,16 +14,7 @@ interface ReminderCardProps {
   onToggleComplete?: () => void;
 }
 
-function formatDate(datetime: string) {
-  const date = new Date(datetime);
-  return date.toLocaleDateString('es-ES', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
+import { formatReminderTimeRange } from '../utils/reminderFormat';
 
 export function ReminderCard({
   reminder,
@@ -55,7 +46,14 @@ export function ReminderCard({
             {reminder.description}
           </Text>
         ) : null}
-        <Text style={styles.date}>{formatDate(reminder.datetime)}</Text>
+        <Text style={styles.date}>
+          {new Date(reminder.datetime).toLocaleDateString('es-ES', {
+            weekday: 'short',
+            day: 'numeric',
+            month: 'short',
+          })}
+        </Text>
+        <Text style={styles.time}>{formatReminderTimeRange(reminder)}</Text>
         {reminder.recurrence !== 'none' && (
           <View style={styles.badge}>
             <Text style={styles.badgeText}>{reminder.recurrence}</Text>
@@ -121,6 +119,13 @@ const styles = StyleSheet.create({
   date: {
     fontSize: 13,
     color: colors.textMuted,
+    marginTop: 2,
+  },
+  time: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.accent,
+    marginTop: 2,
   },
   badge: {
     alignSelf: 'flex-start',
