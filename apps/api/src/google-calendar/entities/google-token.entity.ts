@@ -14,7 +14,7 @@ export class GoogleToken {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  @Column()
+  @Column({ type: 'uuid' })
   userId!: string;
 
   @ManyToOne(() => User, (user) => user.googleTokens, { onDelete: 'CASCADE' })

@@ -15,14 +15,14 @@ export class Reminder {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  @Column()
+  @Column({ type: 'uuid' })
   userId!: string;
 
   @ManyToOne(() => User, (user) => user.reminders, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'userId' })
   user!: User;
 
-  @Column()
+  @Column({ type: 'varchar' })
   title!: string;
 
   @Column({ type: 'text', nullable: true })
@@ -38,10 +38,10 @@ export class Reminder {
   })
   recurrence!: RecurrenceType;
 
-  @Column({ default: false })
+  @Column({ type: 'boolean', default: false })
   isCompleted!: boolean;
 
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', nullable: true })
   googleEventId!: string | null;
 
   @CreateDateColumn()
