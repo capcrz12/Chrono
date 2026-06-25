@@ -1,0 +1,25 @@
+{
+  "name": "chrono",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Gestión de recordatorios con sincronización Google Calendar",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "api:dev": "npm run dev --workspace=@chrono/api",
+    "api:build": "npm run build --workspace=@chrono/api",
+    "worker:dev": "npm run dev --workspace=@chrono/worker",
+    "worker:build": "npm run build --workspace=@chrono/worker",
+    "mobile:dev": "npm run start --workspace=@chrono/mobile",
+    "shared:build": "npm run build --workspace=@chrono/shared",
+    "build": "npm run shared:build && npm run api:build && npm run worker:build",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
