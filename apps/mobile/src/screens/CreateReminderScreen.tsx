@@ -21,11 +21,28 @@ const RECURRENCE_OPTIONS = [
   { value: RecurrenceType.CUSTOM, label: 'Personalizado' },
 ];
 
+function defaultDatetimeLocal(): string {
+  const d = new Date(Date.now() + 3600000);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function toIsoDatetime(value: string): string {
+  if (!value.trim()) {
+    return new Date(Date.now() + 3600000).toISOString();
+  }
+  // Formato datetime-local: 2026-06-25T10:00
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)) {
+    return new Date(value).toISOString();
+  }
+  return new Date(value).toISOString();
+}
+
 export function CreateReminderScreen() {
   const navigation = useNavigation();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [datetime, setDatetime] = useState('');
+  const [datetime, setDatetime] = useState(defaultDatetimeLocal);
   const [recurrence, setRecurrence] = useState<RecurrenceType>(RecurrenceType.NONE);
   const [loading, setLoading] = useState(false);
 
@@ -35,13 +52,13 @@ export function CreateReminderScreen() {
       return;
     }
 
-    const dateValue = datetime || new Date(Date.now() + 3600000).toISOString();
+    const dateValue = toIsoDatetime(datetime);
     setLoading(true);
     try {
       await api.createReminder({
         title: title.trim(),
         description: description.trim() || undefined,
-        datetime: new Date(dateValue).toISOString(),
+        datetime: dateValue,
         recurrence,
       });
       navigation.goBack();
@@ -77,11 +94,12 @@ export function CreateReminderScreen() {
       />
 
       <Input
-        label="Fecha y hora (ISO)"
-        placeholder="2026-06-25T10:00:00.000Z"
+        label="Fecha y hora"
+        placeholder="2026-06-25T10:00"
         value={datetime}
         onChangeText={setDatetime}
       />
+      <Text style={styles.hint}>Formato: AAAA-MM-DDTHH:MM (ej. 2026-06-25T10:00)</Text>
 
       <Text style={styles.label}>Recurrencia</Text>
       <View style={styles.recurrenceRow}>
@@ -131,6 +149,12 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: colors.textSecondary,
     marginBottom: spacing.sm,
+  },
+  hint: {
+    fontSize: 12,
+    color: colors.textMuted,
+    marginTop: -spacing.sm,
+    marginBottom: spacing.md,
   },
   recurrenceRow: {
     flexDirection: 'row',

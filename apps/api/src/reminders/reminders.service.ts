@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between } from 'typeorm';
 import { Queue } from 'bullmq';
@@ -9,19 +9,23 @@ import { RecurrenceType, QUEUE_NAMES, JOB_NAMES } from '@chrono/shared';
 
 @Injectable()
 export class RemindersService {
-  private readonly queue: Queue;
+  private readonly logger = new Logger(RemindersService.name);
+  private readonly queue: Queue | null;
 
   constructor(
     @InjectRepository(Reminder)
     private readonly remindersRepository: Repository<Reminder>,
     config: ConfigService,
   ) {
-    this.queue = new Queue(QUEUE_NAMES.REMINDERS, {
-      connection: {
-        host: config.get<string>('REDIS_HOST', 'localhost'),
-        port: config.get<number>('REDIS_PORT', 6379),
-      },
-    });
+    const redisEnabled = config.get<string>('REDIS_ENABLED', 'true') !== 'false';
+    this.queue = redisEnabled
+      ? new Queue(QUEUE_NAMES.REMINDERS, {
+          connection: {
+            host: config.get<string>('REDIS_HOST', 'localhost'),
+            port: config.get<number>('REDIS_PORT', 6379),
+          },
+        })
+      : null;
   }
 
   async create(userId: string, dto: CreateReminderDto): Promise<Reminder> {
@@ -94,24 +98,30 @@ export class RemindersService {
   }
 
   private async scheduleReminderJob(reminder: Reminder): Promise<void> {
-    if (reminder.isCompleted) return;
+    if (!this.queue || reminder.isCompleted) return;
 
     const delay = new Date(reminder.datetime).getTime() - Date.now();
     if (delay <= 0) return;
 
-    await this.queue.add(
-      JOB_NAMES.PROCESS_REMINDER,
-      {
-        reminderId: reminder.id,
-        userId: reminder.userId,
-        title: reminder.title,
-        datetime: reminder.datetime.toISOString(),
-      },
-      {
-        delay,
-        jobId: `reminder-${reminder.id}`,
-        removeOnComplete: true,
-      },
-    );
+    try {
+      await this.queue.add(
+        JOB_NAMES.PROCESS_REMINDER,
+        {
+          reminderId: reminder.id,
+          userId: reminder.userId,
+          title: reminder.title,
+          datetime: reminder.datetime.toISOString(),
+        },
+        {
+          delay,
+          jobId: `reminder-${reminder.id}`,
+          removeOnComplete: true,
+        },
+      );
+    } catch (error) {
+      this.logger.warn(
+        'Redis no disponible: recordatorio guardado sin cola de notificaciones',
+      );
+    }
   }
 }

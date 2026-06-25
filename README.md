@@ -21,69 +21,87 @@ chrono/
 
 | Rama | Funcionalidad | Estado |
 |------|---------------|--------|
-| `main` | Base del repositorio | — |
-| `feature/infra-monorepo` | Infraestructura, Docker, monorepo, MVP completo | **Revisión pendiente** |
-| `feature/api-auth` | Autenticación JWT + Google OAuth | Pendiente merge infra |
-| `feature/api-reminders` | CRUD recordatorios | Pendiente |
+| `main` | MVP completo mergeado | ✅ |
+| `feature/local-dev` | Desarrollo local sin Docker + Expo | En progreso |
+| `feature/api-auth` | Mejoras auth JWT + Google OAuth | Pendiente |
+| `feature/api-reminders` | Mejoras CRUD recordatorios | Pendiente |
 | `feature/api-google-calendar` | Sync Google Calendar | Pendiente |
 | `feature/worker` | Worker BullMQ | Pendiente |
 | `feature/mobile` | App Expo | Pendiente |
 
-> **Flujo:** Revisa cada rama, prueba localmente y avísame para hacer merge a `main` antes de continuar con la siguiente.
-
 ## Requisitos
 
 - Node.js 20+
-- Docker y Docker Compose
 - npm 10+
+- PostgreSQL 16+ (local o Docker)
+- Redis (opcional; sin Redis el CRUD funciona, las notificaciones no)
+- Docker (opcional)
 
-## Inicio rápido
+## Inicio rápido — local sin Docker (recomendado)
 
-### 1. Clonar e instalar
+### 1. Instalar dependencias
 
 ```bash
-git clone <repo-url>
-cd chrono
-git checkout feature/infra-monorepo
-cp .env.example .env
+git clone https://github.com/capcrz12/Chrono.git
+cd Chrono
 npm install
 ```
 
-### 2. Levantar infraestructura (PostgreSQL + Redis + API + Worker)
+### 2. Configurar PostgreSQL
+
+Tienes PostgreSQL 17 instalado. Ejecuta:
+
+```powershell
+npm run setup:local
+```
+
+Te pedirá la contraseña del usuario `postgres` y creará la base de datos `chrono`.
+
+### 3. Configurar entorno
+
+```bash
+cp .env.example .env
+```
+
+Si **no tienes Redis**, añade en `.env`:
+
+```
+REDIS_ENABLED=false
+```
+
+### 4. Arrancar todo (API + Worker + Expo)
+
+```powershell
+npm run dev:local
+```
+
+Abre:
+- **Expo Web:** http://localhost:8081 (pulsa `w` en la terminal de Expo)
+- **API:** http://localhost:3000
+- **Swagger:** http://localhost:3000/api/docs
+
+### Manual (3 terminales)
+
+```bash
+npm run shared:build
+npm run api:dev      # terminal 1
+npm run worker:dev   # terminal 2 (opcional sin Redis)
+npm run mobile:dev   # terminal 3 → pulsa w para web
+```
+
+## Inicio rápido — con Docker
 
 ```bash
 docker compose up -d
 ```
 
-Servicios:
-- API: http://localhost:3000
-- Swagger: http://localhost:3000/api/docs
-- PostgreSQL: localhost:5432
-- Redis: localhost:6379
-
-### 3. Desarrollo local (sin Docker para API/Worker)
-
-```bash
-# Solo bases de datos
-docker compose up -d postgres redis
-
-# Compilar shared
-npm run shared:build
-
-# API en modo watch
-npm run api:dev
-
-# Worker en modo watch (otra terminal)
-npm run worker:dev
-```
-
-### 4. Frontend Expo
+### Frontend Expo (con Docker o local)
 
 ```bash
 npm run mobile:dev
 ```
 
-- Web: http://localhost:8081
+- Web: http://localhost:8081 (pulsa `w`)
 - Escanea QR con Expo Go en móvil
 
 Configura `EXPO_PUBLIC_API_URL` en `.env` si la API no está en localhost.

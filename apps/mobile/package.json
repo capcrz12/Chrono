@@ -4,10 +4,8 @@
   "private": true,
   "main": "index.ts",
   "scripts": {
-    "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
-    "web": "expo start --web"
+    "start": "dotenv -e ../../.env -- expo start",
+    "web": "dotenv -e ../../.env -- expo start --web"
   },
   "dependencies": {
     "@chrono/shared": "*",
@@ -29,6 +27,7 @@
   "devDependencies": {
     "@babel/core": "^7.24.5",
     "@types/react": "~18.3.3",
+    "dotenv-cli": "^7.4.4",
     "typescript": "^5.4.5"
   }
 }
