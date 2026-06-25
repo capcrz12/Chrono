@@ -3,14 +3,14 @@ import { PassportStrategy } from '@nestjs/passport';
 import { Strategy, VerifyCallback } from 'passport-google-oauth20';
 import { ConfigService } from '@nestjs/config';
 import { UsersService } from '../../users/users.service';
-import { AuthService } from '../auth.service';
+import { GoogleCalendarService } from '../../google-calendar/google-calendar.service';
 
 @Injectable()
 export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
   constructor(
     config: ConfigService,
     private readonly usersService: UsersService,
-    private readonly authService: AuthService,
+    private readonly googleCalendarService: GoogleCalendarService,
   ) {
     super({
       clientID: config.get<string>('GOOGLE_CLIENT_ID') ?? 'not-configured',
@@ -21,8 +21,8 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
   }
 
   async validate(
-    _accessToken: string,
-    _refreshToken: string,
+    accessToken: string,
+    refreshToken: string,
     profile: { id: string; emails?: { value: string }[]; displayName?: string },
     done: VerifyCallback,
   ): Promise<void> {
@@ -35,8 +35,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
     if (!user) {
       user = await this.usersService.findByEmail(email);
       if (user) {
-        user.googleId = profile.id;
-        // In production, persist googleId update via repository
+        user = await this.usersService.update(user.id, { googleId: profile.id });
       } else {
         user = await this.usersService.create({
           email,
@@ -44,6 +43,15 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
           googleId: profile.id,
         });
       }
+    }
+
+    if (accessToken && refreshToken) {
+      await this.googleCalendarService.saveTokens(
+        user.id,
+        accessToken,
+        refreshToken,
+        Date.now() + 3600 * 1000,
+      );
     }
 
     done(null, user);

@@ -100,12 +100,17 @@ class ApiClient {
     return this.request<{ id: string; email: string; name: string }>('/auth/me');
   }
 
-  getReminders(start?: string, end?: string) {
+  getReminders(status?: 'pending' | 'completed', start?: string, end?: string) {
     const params = new URLSearchParams();
+    if (status) params.set('status', status);
     if (start) params.set('start', start);
     if (end) params.set('end', end);
     const query = params.toString() ? `?${params}` : '';
     return this.request<ReminderResponse[]>(`/reminders${query}`);
+  }
+
+  getReminder(id: string) {
+    return this.request<ReminderResponse>(`/reminders/${id}`);
   }
 
   createReminder(data: CreateReminderPayload) {

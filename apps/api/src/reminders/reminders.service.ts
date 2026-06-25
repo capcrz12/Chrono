@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between } from 'typeorm';
+import { Repository, Between, FindOptionsWhere } from 'typeorm';
 import { Queue } from 'bullmq';
 import { ConfigService } from '@nestjs/config';
 import { Reminder } from './entities/reminder.entity';
@@ -43,9 +43,16 @@ export class RemindersService {
     return saved;
   }
 
-  async findAll(userId: string): Promise<Reminder[]> {
+  async findAll(
+    userId: string,
+    status?: 'pending' | 'completed',
+  ): Promise<Reminder[]> {
+    const where: FindOptionsWhere<Reminder> = { userId };
+    if (status === 'pending') where.isCompleted = false;
+    if (status === 'completed') where.isCompleted = true;
+
     return this.remindersRepository.find({
-      where: { userId },
+      where,
       order: { datetime: 'ASC' },
     });
   }
@@ -111,6 +118,7 @@ export class RemindersService {
           userId: reminder.userId,
           title: reminder.title,
           datetime: reminder.datetime.toISOString(),
+          recurrence: reminder.recurrence,
         },
         {
           delay,

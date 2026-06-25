@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,7 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { api, ReminderResponse } from '../services/api';
 import { ReminderCard } from '../components/ReminderCard';
-import { useAuth } from '../context/AuthContext';
+import { FilterChips, FilterValue } from '../components/FilterChips';
 import { colors, spacing, typography } from '../theme';
 import { RootStackParamList } from '../navigation/types';
 
@@ -19,8 +19,8 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 export function RemindersListScreen() {
   const navigation = useNavigation<NavigationProp>();
-  const { user, logout } = useAuth();
   const [reminders, setReminders] = useState<ReminderResponse[]>([]);
+  const [filter, setFilter] = useState<FilterValue>('all');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -42,6 +42,22 @@ export function RemindersListScreen() {
     }, []),
   );
 
+  const counts = useMemo(() => {
+    const pending = reminders.filter((r) => !r.isCompleted).length;
+    const completed = reminders.filter((r) => r.isCompleted).length;
+    return {
+      all: reminders.length,
+      pending,
+      completed,
+    };
+  }, [reminders]);
+
+  const filteredReminders = useMemo(() => {
+    if (filter === 'pending') return reminders.filter((r) => !r.isCompleted);
+    if (filter === 'completed') return reminders.filter((r) => r.isCompleted);
+    return reminders;
+  }, [reminders, filter]);
+
   const handleToggleComplete = async (reminder: ReminderResponse) => {
     try {
       const updated = await api.updateReminder(reminder.id, {
@@ -55,29 +71,30 @@ export function RemindersListScreen() {
     }
   };
 
-  const pending = reminders.filter((r) => !r.isCompleted);
-  const completed = reminders.filter((r) => r.isCompleted);
+  const pendingCount = reminders.filter((r) => !r.isCompleted).length;
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <View>
-          <Text style={styles.greeting}>Hola, {user?.name?.split(' ')[0]}</Text>
+          <Text style={styles.heading}>Recordatorios</Text>
           <Text style={styles.subtitle}>
-            {pending.length} pendiente{pending.length !== 1 ? 's' : ''}
+            {pendingCount} pendiente{pendingCount !== 1 ? 's' : ''}
           </Text>
         </View>
-        <TouchableOpacity onPress={logout}>
-          <Text style={styles.logout}>Salir</Text>
-        </TouchableOpacity>
       </View>
 
+      <FilterChips value={filter} onChange={setFilter} counts={counts} />
+
       <FlatList
-        data={[...pending, ...completed]}
+        data={filteredReminders}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <ReminderCard
             reminder={item}
+            onPress={() =>
+              navigation.navigate('ReminderForm', { reminderId: item.id })
+            }
             onToggleComplete={() => handleToggleComplete(item)}
           />
         )}
@@ -94,9 +111,17 @@ export function RemindersListScreen() {
         ListEmptyComponent={
           !loading ? (
             <View style={styles.empty}>
-              <Text style={styles.emptyTitle}>Sin recordatorios</Text>
+              <Text style={styles.emptyTitle}>
+                {filter === 'completed'
+                  ? 'Sin completados'
+                  : filter === 'pending'
+                    ? 'Sin pendientes'
+                    : 'Sin recordatorios'}
+              </Text>
               <Text style={styles.emptyText}>
-                Crea tu primer recordatorio con el botón +
+                {filter === 'all'
+                  ? 'Crea tu primer recordatorio con el botón +'
+                  : 'Prueba otro filtro o crea uno nuevo'}
               </Text>
             </View>
           ) : null
@@ -105,7 +130,7 @@ export function RemindersListScreen() {
 
       <TouchableOpacity
         style={styles.fab}
-        onPress={() => navigation.navigate('CreateReminder')}
+        onPress={() => navigation.navigate('ReminderForm', {})}
         activeOpacity={0.8}
       >
         <Text style={styles.fabText}>+</Text>
@@ -120,27 +145,20 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.xl,
-    paddingBottom: spacing.md,
+    paddingBottom: spacing.sm,
   },
-  greeting: {
+  heading: {
     ...typography.heading,
+    fontSize: 24,
   },
   subtitle: {
     ...typography.caption,
     marginTop: 2,
   },
-  logout: {
-    fontSize: 14,
-    color: colors.textSecondary,
-  },
   list: {
-    padding: spacing.lg,
-    paddingTop: 0,
+    paddingHorizontal: spacing.lg,
     paddingBottom: 100,
   },
   empty: {

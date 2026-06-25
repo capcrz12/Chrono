@@ -1,12 +1,17 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { Calendar, DateData } from 'react-native-calendars';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { api, ReminderResponse } from '../services/api';
 import { ReminderCard } from '../components/ReminderCard';
 import { colors, spacing, typography } from '../theme';
+import { RootStackParamList } from '../navigation/types';
+
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 export function CalendarScreen() {
+  const navigation = useNavigation<NavigationProp>();
   const [selectedDate, setSelectedDate] = useState(
     new Date().toISOString().split('T')[0],
   );
@@ -21,6 +26,7 @@ export function CalendarScreen() {
 
     try {
       const data = await api.getReminders(
+        undefined,
         start.toISOString(),
         end.toISOString(),
       );
@@ -82,7 +88,7 @@ export function CalendarScreen() {
         style={styles.calendar}
       />
 
-      <View style={styles.daySection}>
+      <ScrollView style={styles.daySection} contentContainerStyle={styles.dayContent}>
         <Text style={styles.dayTitle}>
           {new Date(selectedDate).toLocaleDateString('es-ES', {
             weekday: 'long',
@@ -95,10 +101,16 @@ export function CalendarScreen() {
           <Text style={styles.empty}>No hay recordatorios este día</Text>
         ) : (
           dayReminders.map((reminder) => (
-            <ReminderCard key={reminder.id} reminder={reminder} />
+            <ReminderCard
+              key={reminder.id}
+              reminder={reminder}
+              onPress={() =>
+                navigation.navigate('ReminderForm', { reminderId: reminder.id })
+              }
+            />
           ))
         )}
-      </View>
+      </ScrollView>
     </View>
   );
 }
@@ -123,7 +135,10 @@ const styles = StyleSheet.create({
   },
   daySection: {
     flex: 1,
+  },
+  dayContent: {
     padding: spacing.lg,
+    paddingBottom: spacing.xl,
   },
   dayTitle: {
     ...typography.heading,

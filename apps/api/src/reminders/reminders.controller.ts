@@ -38,10 +38,17 @@ export class RemindersController {
   @ApiOperation({ summary: 'Listar recordatorios del usuario' })
   @ApiQuery({ name: 'start', required: false, description: 'Fecha inicio ISO' })
   @ApiQuery({ name: 'end', required: false, description: 'Fecha fin ISO' })
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    enum: ['pending', 'completed'],
+    description: 'Filtrar por estado',
+  })
   findAll(
     @CurrentUser() user: User,
     @Query('start') start?: string,
     @Query('end') end?: string,
+    @Query('status') status?: 'pending' | 'completed',
   ) {
     if (start && end) {
       return this.remindersService.findByDateRange(
@@ -50,7 +57,7 @@ export class RemindersController {
         new Date(end),
       );
     }
-    return this.remindersService.findAll(user.id);
+    return this.remindersService.findAll(user.id, status);
   }
 
   @Get(':id')

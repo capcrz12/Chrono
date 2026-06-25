@@ -57,6 +57,7 @@ export interface ProcessReminderJobData {
   userId: string;
   title: string;
   datetime: string;
+  recurrence?: string;
 }
 
 export interface SendNotificationJobData {

@@ -29,7 +29,7 @@ const reminderWorker = new Worker<ReminderJobData>(
   async (job: Job<ReminderJobData>) => {
     if (job.name === JOB_NAMES.PROCESS_REMINDER) {
       const data = job.data as ProcessReminderJobData;
-      await processReminder(data);
+      const result = await processReminder(data);
 
       await notificationQueue.add(
         JOB_NAMES.SEND_NOTIFICATION,
@@ -41,6 +41,27 @@ const reminderWorker = new Worker<ReminderJobData>(
         },
         { removeOnComplete: true },
       );
+
+      if (result.nextDatetime) {
+        const delay = new Date(result.nextDatetime).getTime() - Date.now();
+        if (delay > 0) {
+          await notificationQueue.add(
+            JOB_NAMES.PROCESS_REMINDER,
+            {
+              ...data,
+              datetime: result.nextDatetime,
+            },
+            {
+              delay,
+              jobId: `reminder-${data.reminderId}-${result.nextDatetime}`,
+              removeOnComplete: true,
+            },
+          );
+          console.log(
+            `[Worker] Siguiente ocurrencia programada: ${result.nextDatetime}`,
+          );
+        }
+      }
     }
 
     if (job.name === JOB_NAMES.SEND_NOTIFICATION) {
